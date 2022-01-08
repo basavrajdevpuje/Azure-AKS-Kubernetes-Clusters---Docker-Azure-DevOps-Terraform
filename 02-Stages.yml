@@ -1,0 +1,86 @@
+trigger:
+- main
+
+pool:
+  vmImage: ubuntu-latest
+
+stages:
+- stage: Build
+  jobs:
+  - job: First_job
+    steps:
+    - bash: echo Build job1 step 1
+    - bash: echo $(PipelineLevelVariable)
+    - bash: echo $(Build.BuildNumber)
+    - bash: echo $(Build.BuildId)
+    - bash: echo $(Build.SourceBranchName)
+    - bash: echo $(Build.SourceDirectory)
+    - bash: ls -R $(System.DefaultWorkingDirectory)
+    - bash: echo $(Build.ArtifactStagingDirectory) 
+    - bash: java -version
+    - bash: node --version
+    - bash: python --version
+    - bash: mvn -version
+    - bash: ls -R $(Build.ArtifactStagingDirectory) # recursive ls before copying files
+    - task: CopyFiles@2
+      inputs:
+        SourceFolder: '$(System.DefaultWorkingDirectory)'
+        Contents: |
+          **/*.yaml
+          **/*.tf
+        TargetFolder: '$(Build.ArtifactStagingDirectory)'
+    - bash: ls -R $(Build.ArtifactStagingDirectory) # recursive ls after copying files
+    
+    # Publishing the Artifact
+    - task: PublishBuildArtifacts@1
+      inputs:
+        PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+        ArtifactName: 'drop'
+        publishLocation: 'Container'
+
+  - job: Second_job
+    steps:
+    - bash: echo Build job2 step 2
+      displayName: 'Run a one-line script'  
+- stage: DevDeploy
+  variables:
+    environment: Dev  
+  dependsOn: Build
+  jobs:
+    - job: First_job
+      steps:
+        - bash: echo $(environment)Deploy job1 step 1
+          displayName: 'Run a one-line script'
+    - job: Second_job
+      steps:
+        - bash: echo DevDeploy job1 step 2
+          displayName: 'Run a one-line script'      
+- stage: QADeploy
+  dependsOn: Build
+  variables:
+    environment: QA
+  jobs:
+      - job: First_job
+        steps:
+          - bash: echo $(environment)Deploy job1 step 1
+            displayName: 'Run a one-line script'
+      - job: Second_job
+        steps:
+          - bash: echo QADeploy job1 step 2
+            displayName: 'Run a one-line script'
+
+- stage: ProdDeploy
+  dependsOn: 
+  - DevDeploy
+  - QADeploy
+  variables:
+    environment: Prod
+  jobs:
+    - job: First_job
+      steps:
+        - bash: echo $(environment)Deploy job1 step 1
+          displayName: 'Run a one-line script'
+    - job: Second_job
+      steps:
+        - bash: echo ProdDeploy job1 step 2
+          displayName: 'Run a one-line script'

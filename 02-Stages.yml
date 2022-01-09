@@ -41,7 +41,7 @@ stages:
   - job: Second_job
     steps:
     - bash: echo Build job2 step 2
-      displayName: 'Run a one-line script'  
+      displayName: 'Run a one-line scripts'  
 - stage: DevDeploy
   variables:
     environment: Dev  

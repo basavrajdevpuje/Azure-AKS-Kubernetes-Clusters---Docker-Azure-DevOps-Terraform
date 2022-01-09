@@ -13,7 +13,7 @@ steps:
   inputs:
     secureFile: 'azure_rsa.pub'
 
-
+# terraform init
 - task: TerraformCLI@0
   inputs:
     command: 'init'
@@ -28,11 +28,20 @@ steps:
     backendAzureRmContainerName: 'storageaccountcontainer'
     backendAzureRmKey: 'terraform_kubernetes_dev.tfstate'
     allowTelemetryCollection: true
-
+    
+# terraform apply to create the resource group to create the cluster and to store the backend state
 - task: TerraformCLI@0
   inputs:
     command: 'apply'
     workingDirectory: '$(System.DefaultWorkingDirectory)/configuration/iaac/azure/kubernetes'
-    environmentServiceName: 'azure-resource-manager-service-connection'
+    environmentServiceName: 'azure-resource-manager-service-connection' # to talk with azure
     commandOptions: '-var client_id=$(client_id) -var client_secret=$(client_secret) -var ssh_public_key=$(public_key.secureFilePath)'
+    allowTelemetryCollection: true
+
+# destroy the kubernetes cluster using the Terraform destroy
+- task: TerraformCLI@0
+  inputs:
+    command: 'destroy'
+    workingDirectory: '$(System.DefaultWorkingDirectory)/configuration/iaac/azure/kubernetes'
+    environmentServiceName: 'azure-resource-manager-service-connection'
     allowTelemetryCollection: true

@@ -9,7 +9,7 @@ variables:
 
 stages:
 - stage: Build
-  displayName: Build image
+  displayName: Build docker image
   jobs:
   - job: Build
     displayName: Build

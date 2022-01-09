@@ -1,0 +1,72 @@
+trigger:
+- main
+
+resources:
+- repo: self
+
+variables:
+  tag: '$(Build.BuildId)'
+stages:
+# stage 1
+
+# Build the docker image 
+# Copy files from DefaultWorkingDirectory to StagingDierctory
+# Publish and build the artifacts
+- stage: Build
+  displayName: Build image
+  jobs:
+  - job: Build
+    displayName: Build
+    pool:
+      vmImage: ubuntu-latest
+    steps:
+    # Build the docker image
+    - task: Docker@2
+      displayName: Build an docker image
+      inputs:
+        containerRegistry: 'basavraj-docker-hub'
+        repository: 'basavrajdevpuje041997 / currency-excahnge-devops'
+        command: 'buildAndPush'
+        Dockerfile: '**/Dockerfile'
+        tags: '$(tag)'
+    # Copy files from DefaultWorkingDirectory to StagingDierctory
+    - task: CopyFiles@2
+      inputs:
+        SourceFolder: '$(System.DefaultWorkingDirectory)'
+        Contents: '**/*.yaml'
+        TargetFolder: '$(Build.ArtifactStagingDirectory)'
+    # Publish and build the artifacts
+    - task: PublishBuildArtifacts@1
+      inputs:
+        PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+        ArtifactName: 'manifests'
+        publishLocation: 'Container'
+
+# stage 2
+
+# Download Pipeline Artifacts
+# Deploy to K8S cluster with Docker Image
+
+- stage: Deploy
+  displayName: Deploy image
+  jobs:
+  - job: Deploy
+    displayName: Deploy
+    pool:
+      vmImage: ubuntu-latest
+    steps:
+    # Download Pipeline Artifacts
+      - task: DownloadPipelineArtifact@2
+        inputs:
+          buildType: 'current'
+          artifactName: 'manifests'
+          itemPattern: '**/*.yaml'
+          targetPath: '$(System.ArtifactsDirectory)'
+
+    # Deploy to K8S cluster with Docker Image      
+      - task: KubernetesManifest@0
+        inputs:
+          action: 'deploy'
+          kubernetesServiceConnection: 'azure-kubernetes-connection'
+          manifests: '$(System.ArtifactsDirectory)/configuration/kubernetes/deployment.yaml'
+          containers: 'basavrajdevpuje041997/currency-excahnge-devops:$(tag)'
